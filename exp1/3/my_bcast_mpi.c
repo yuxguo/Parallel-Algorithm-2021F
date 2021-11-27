@@ -2,7 +2,7 @@
 #include <mpi.h>
 #include <string.h>
 
-#define ROOT 0
+#define ROOT 1
 
 int my_bcast_mpi(void *buffer, int count, MPI_Datatype datatype, int root, MPI_Comm comm);
 int get_color(char *name);
