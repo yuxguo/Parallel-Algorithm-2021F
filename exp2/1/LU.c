@@ -50,7 +50,6 @@ int main(int argc, char **argv)
     {
         L = (float *)malloc(N * N * sizeof(float));
         U = (float *)malloc(N * N * sizeof(float));
-#pragma omp parallel for shared(L)
         for (int i = 0; i < N; ++i)
         {
 #pragma omp parallel for shared(L)
@@ -66,7 +65,6 @@ int main(int argc, char **argv)
                 }
             }
         }
-#pragma omp parallel for shared(U)
         for (int i = 0; i < N; ++i)
         {
 #pragma omp parallel for shared(U)
@@ -79,7 +77,6 @@ int main(int argc, char **argv)
     // Send A_0 to all proc
     if (rank == 0)
     {
-#pragma omp parallel for shared(A_0, A)
         for (int i = 0; i < m; ++i)
         {
 #pragma omp parallel for shared(A_0, A)
@@ -124,7 +121,6 @@ int main(int argc, char **argv)
             }
             if (rank <= j)
             {
-#pragma omp parallel for shared(A, f)
                 for (int k = i + 1; k < m; ++k)
                 {
                     A(k, v) = A(k, v) / f[v];
@@ -137,7 +133,6 @@ int main(int argc, char **argv)
             }
             else
             {
-#pragma omp parallel for
                 for (int k = i; k < m; ++k)
                 {
                     A(k, v) = A(k, v) / f[v];
@@ -155,7 +150,6 @@ int main(int argc, char **argv)
     // Start gathering
     if (rank == 0)
     {
-#pragma omp parallel for shared(A_0, A)
         for (int i = 0; i < m; ++i)
         {
 #pragma omp parallel for shared(A_0, A)
@@ -181,7 +175,6 @@ int main(int argc, char **argv)
     }
     if (rank == 0)
     {
-#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
 #pragma omp parallel for
