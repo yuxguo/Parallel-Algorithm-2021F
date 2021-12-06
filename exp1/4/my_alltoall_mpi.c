@@ -12,7 +12,7 @@ int main(int argc, char **argv)
     int my_value;
     int *my_sendbuf, *my_recvbuf;
     MPI_Status status;
-    clock_t start, end;
+    double start, end;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -23,12 +23,14 @@ int main(int argc, char **argv)
     for (int i = 0; i < size; ++i) {
         my_sendbuf[i] = i;
     }
-    start = clock();
+    MPI_Barrier(MPI_COMM_WORLD);
+    start = MPI_Wtime();
     MPI_Alltoall(my_sendbuf, 1, MPI_INT, my_recvbuf, 1, MPI_INT, MPI_COMM_WORLD);
     // my_alltoall_mpi(my_sendbuf, 1, MPI_INT, my_recvbuf, 1, MPI_INT, MPI_COMM_WORLD);
-    end = clock();
+    MPI_Barrier(MPI_COMM_WORLD);
+    end = MPI_Wtime();
 
-    printf("\nAfter all to all (rank %d), time:%.3lf ms\n", rank, (double)(end - start) / CLOCKS_PER_SEC * 1e3);
+    printf("\nAfter all to all (rank %d), time:%.3lf ms\n", rank, (double)(end - start) * 1e3);
     for (int i = 0; i < size; ++i)
     {
         printf("%d ", my_recvbuf[i]);

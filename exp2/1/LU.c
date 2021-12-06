@@ -11,21 +11,21 @@
 
 int main(int argc, char **argv)
 {
-    
+
     if (argc != 2)
     {
         return 0;
     }
     int rank, size;
     int N;
-    clock_t start, end;
+    double start, end;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
     float *A_0, *L, *U, *A, *f;
-    start = clock();
-
+    MPI_Barrier(MPI_COMM_WORLD);
+    start = MPI_Wtime();
     if (rank == 0)
     {
         FILE *fp = fopen(argv[1], "r");
@@ -50,9 +50,9 @@ int main(int argc, char **argv)
     {
         L = (float *)malloc(N * N * sizeof(float));
         U = (float *)malloc(N * N * sizeof(float));
+#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
-#pragma omp parallel for shared(L)
             for (int j = 0; j < N; ++j)
             {
                 if (i == j)
@@ -65,9 +65,9 @@ int main(int argc, char **argv)
                 }
             }
         }
+#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
-#pragma omp parallel for shared(U)
             for (int j = 0; j < N; ++j)
             {
                 U(i, j) = 0.0;
@@ -77,9 +77,9 @@ int main(int argc, char **argv)
     // Send A_0 to all proc
     if (rank == 0)
     {
+#pragma omp parallel for
         for (int i = 0; i < m; ++i)
         {
-#pragma omp parallel for shared(A_0, A)
             for (int j = 0; j < N; ++j)
             {
                 A(i, j) = A_0(i * size, j);
@@ -121,10 +121,10 @@ int main(int argc, char **argv)
             }
             if (rank <= j)
             {
+#pragma omp parallel for
                 for (int k = i + 1; k < m; ++k)
                 {
                     A(k, v) = A(k, v) / f[v];
-#pragma omp parallel for shared(A, f)
                     for (int w = v + 1; w < N; ++w)
                     {
                         A(k, w) = A(k, w) - f[w] * A(k, v);
@@ -133,10 +133,10 @@ int main(int argc, char **argv)
             }
             else
             {
+#pragma omp parallel for
                 for (int k = i; k < m; ++k)
                 {
                     A(k, v) = A(k, v) / f[v];
-#pragma omp parallel for
                     for (int w = v + 1; w < N; ++w)
                     {
                         A(k, w) = A(k, w) - f[w] * A(k, v);
@@ -150,9 +150,9 @@ int main(int argc, char **argv)
     // Start gathering
     if (rank == 0)
     {
+#pragma omp parallel for
         for (int i = 0; i < m; ++i)
         {
-#pragma omp parallel for shared(A_0, A)
             for (int j = 0; j < N; ++j)
             {
                 A_0(i * size, j) = A(i, j);
@@ -175,9 +175,9 @@ int main(int argc, char **argv)
     }
     if (rank == 0)
     {
+#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
-#pragma omp parallel for
             for (int j = 0; j < N; ++j)
             {
                 if (i > j)
@@ -214,8 +214,9 @@ int main(int argc, char **argv)
         }
     }
 #endif
-    end = clock();
-    printf("rank: %d, %.3f ms\n", rank, (double)(end - start) / CLOCKS_PER_SEC * 1e3);
+    MPI_Barrier(MPI_COMM_WORLD);
+    end = MPI_Wtime();
+    printf("rank: %d, %.3f ms\n", rank, (double)(end - start) * 1e3);
     if (rank == 0)
     {
         free(A_0);

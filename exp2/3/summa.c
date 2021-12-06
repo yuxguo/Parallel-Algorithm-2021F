@@ -25,13 +25,14 @@ int main(int argc, char **argv)
     int b_col, b_row;
     int self_col, self_row;
     int N;
-    clock_t start, end;
+    double start, end;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size); // assume size = x ^ 2, N % x == 0
 
     float *A_0, *B_0, *C_0, *A, *B, *C, *A_, *B_;
-    start = clock();
+    MPI_Barrier(MPI_COMM_WORLD);
+    start = MPI_Wtime();
     if (rank == 0)
     {
         FILE *fp = fopen(argv[1], "r");
@@ -246,10 +247,11 @@ int main(int argc, char **argv)
         }
     }
 #endif
-    end = clock();
+    MPI_Barrier(MPI_COMM_WORLD);
+    end = MPI_Wtime();
 
 #ifndef PRINT
-    printf("rank: %d, %.3f ms\n", rank, (double)(end - start) / CLOCKS_PER_SEC * 1e3);
+    printf("rank: %d, %.3f ms\n", rank, (double)(end - start) * 1e3);
 #endif
     if (rank == 0)
     {

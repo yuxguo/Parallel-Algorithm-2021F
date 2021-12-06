@@ -7,12 +7,15 @@
 #define A(x, y) A[x * N + y]
 #define Q(x, y) Q[x * N + y]
 
+int N;
+float *A, *Q;
+
+void my_wait(int line, int base, int *finish);
+void transform(int j, int start_line, int end_line); // major_line, start_line, end_line
+
 int main(int argc, char **argv)
 {
-    // Initialization
-    int N;
-    float *A, *Q;
-    clock_t start, end;
+    double start, end;
     FILE *fp = fopen(argv[1], "r");
     fscanf(fp, "%d", &N);
     A = (float *)malloc(N * N * sizeof(float));
@@ -33,41 +36,36 @@ int main(int argc, char **argv)
             Q[i] = 0;
         }
     }
-    float *aj, *qj, *ai, *qi;
-    aj = (float *)malloc(N * sizeof(float));
-    qj = (float *)malloc(N * sizeof(float));
-    ai = (float *)malloc(N * sizeof(float));
-    qi = (float *)malloc(N * sizeof(float));
-
-    start = clock();
-    // start computing
-    for (int j = 0; j < N; ++j)
+    int *finish = (int *)malloc(N * sizeof(int));
+    int total_thread, my_thread, block, base;
+    for (int i = 0; i < N; i++)
     {
-        for (int i = j + 1; i < N; ++i)
+        finish[i] = 0;
+    }
+    start = omp_get_wtime();
+    // start computing
+#pragma omp parallel shared(Q, A, finish) private(my_thread, total_thread, base, block)
+    {
+        my_thread = omp_get_thread_num();
+        total_thread = omp_get_num_threads();
+        block = N / total_thread;
+        base = my_thread * block;
+        for (int j = 0; j < base + block; ++j)
         {
-            float sq = sqrt(A(j, j) * A(j, j) + A(i, j) * A(i, j));
-            float c = A(j, j) / sq;
-            float s = A(i, j) / sq;
-#pragma parallel for shared(A, Q, aj, qj, ai, qi, sq, c, s)
-            for (int k = 0; k < N; ++k)
+            if (j < base) // need to wait other thread
             {
-                aj[k] = c * A(j, k) + s * A(i, k);
-                qj[k] = c * Q(j, k) + s * Q(i, k);
-                ai[k] = -s * A(j, k) + c * A(i, k);
-                qi[k] = -s * Q(j, k) + c * Q(i, k);
+                my_wait(j, base, finish);
+                transform(j, base, base + block);
             }
-#pragma parallel for shared(A, Q, aj, qj, ai, qi, sq, c, s)
-            for (int k = 0; k < N; ++k)
+            else
             {
-                A(j, k) = aj[k];
-                Q(j, k) = qj[k];
-                A(i, k) = ai[k];
-                Q(i, k) = qi[k];
+                transform(j, j + 1, base + block);
             }
+            finish[j] = base + block;
         }
     }
-    end = clock();
-    printf("%d, time: %.3fms\n", N, (double)(end - start) / CLOCKS_PER_SEC * 1e3);
+    end = omp_get_wtime();
+    printf("%d, time: %.3f ms\n", N, (double)(end - start) * 1e3);
 #ifdef PRINT
     printf("Q:\n");
     for (int i = 0; i < N; ++i)
@@ -90,9 +88,37 @@ int main(int argc, char **argv)
 #endif
     free(A);
     free(Q);
-    free(aj);
-    free(qj);
-    free(ai);
-    free(qi);
+    free(finish);
     return 0;
+}
+void my_wait(int line, int base, int *finish)
+{
+    while (1)
+    {
+        if (finish[line] >= base)
+        {
+            break;
+        }
+    }
+}
+void transform(int j, int start_line, int end_line)
+{
+    for (int i = start_line; i < end_line; ++i)
+    {
+        float sq = sqrt(A(j, j) * A(j, j) + A(i, j) * A(i, j));
+        float c = A(j, j) / sq;
+        float s = A(i, j) / sq;
+        float ajk, aik, qjk, qik;
+        for (int k = 0; k < N; ++k)
+        {
+            ajk = c * A(j, k) + s * A(i, k);
+            qjk = c * Q(j, k) + s * Q(i, k);
+            aik = -s * A(j, k) + c * A(i, k);
+            qik = -s * Q(j, k) + c * Q(i, k);
+            A(j, k) = ajk;
+            Q(j, k) = qjk;
+            A(i, k) = aik;
+            Q(i, k) = qik;
+        }
+    }
 }
