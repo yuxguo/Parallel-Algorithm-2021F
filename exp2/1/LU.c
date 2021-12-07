@@ -50,7 +50,6 @@ int main(int argc, char **argv)
     {
         L = (float *)malloc(N * N * sizeof(float));
         U = (float *)malloc(N * N * sizeof(float));
-#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
             for (int j = 0; j < N; ++j)
@@ -65,7 +64,6 @@ int main(int argc, char **argv)
                 }
             }
         }
-#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
             for (int j = 0; j < N; ++j)
@@ -150,7 +148,6 @@ int main(int argc, char **argv)
     // Start gathering
     if (rank == 0)
     {
-#pragma omp parallel for
         for (int i = 0; i < m; ++i)
         {
             for (int j = 0; j < N; ++j)
@@ -175,7 +172,6 @@ int main(int argc, char **argv)
     }
     if (rank == 0)
     {
-#pragma omp parallel for
         for (int i = 0; i < N; ++i)
         {
             for (int j = 0; j < N; ++j)
